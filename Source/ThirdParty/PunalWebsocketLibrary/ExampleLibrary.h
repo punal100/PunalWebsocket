@@ -7,4 +7,4 @@
 #endif
 
 //EXAMPLELIBRARY_IMPORT void ExampleLibraryFunction();
-void ExampleLibraryFunction();
+//void ExampleLibraryFunction();

@@ -29,7 +29,10 @@ public class PunalWebsocket : ModuleRules
 			new string[]
 			{
 				"Core",
-				"PunalWebsocketLibrary",
+                "CoreUObject",
+                "Engine",
+                "InputCore",
+                "Boost",
 				"Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
@@ -54,13 +57,14 @@ public class PunalWebsocket : ModuleRules
 
 	public void Add_Include_And_Dependency(ReadOnlyTargetRules Target)
 	{
-		string Boost_Beast_Includes_Path = Path.Combine(ModuleDirectory, "../", "ThirdParty", "PunalWebsocketLibrary");
-
-        PublicIncludePaths.AddRange(
-            new string[] {
-				// ... add public include paths required here ...
-				Boost_Beast_Includes_Path
-            }
-            );
+		//string Boost_Beast_Includes_Path = Path.Combine(ModuleDirectory, "../", "ThirdParty", "PunalWebsocketLibrary");
+        //Boost_Beast_Includes_Path = Path.Combine(ModuleDirectory);
+		//
+        //PublicIncludePaths.AddRange(
+        //    new string[] {
+		//		// ... add public include paths required here ...
+		//		Boost_Beast_Includes_Path
+        //    }
+        //    );
     }
 }

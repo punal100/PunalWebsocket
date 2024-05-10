@@ -1,3 +1,3 @@
-[submodule "Source/ThirdParty/PunalWebsocketLibrary/beast"]
-	path = Source/ThirdParty/PunalWebsocketLibrary/beast
-	url = https://github.com/boostorg/beast.git
+[submodule "Source/ThirdParty/PunalWebsocketLibrary/boost/boost"]
+	path = Source/ThirdParty/PunalWebsocketLibrary/boost/boost
+	url = https://github.com/boostorg/boost.git

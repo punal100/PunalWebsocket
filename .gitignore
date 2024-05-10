@@ -16,13 +16,6 @@ Plugins/Developer/RiderLink
 /enc_temp_folder/*
 /Source/Deps/Build/*
 
-# Ignore the same things for plugins
-/Plugins/**/Build/*
-/Plugins/**/Intermediate/*
-/Plugins/**/DerivedDataCache/*
-/Plugins/**/Saved/*
-/Plugins/**/enc_temp_folder/*
-
 # Punal Manalan: Ignore These Binaries as they will Increase the Commit Size Everytime
 /Binaries/*
 /Plugins/**/Binaries/*
@@ -51,8 +44,53 @@ Saved/*
 
 # Compiled source files for the engine to use
 Intermediate/*
-Plugins/*/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
 APKs
+
+# CMake Gemerated Files
+# Compiled Object files
+**/.DS_Store
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Generated Files
+/Source/ThirdParty/PunalWebsocketLibrary/.vs/
+/Source/ThirdParty/PunalWebsocketLibrary/out/
+/Source/ThirdParty/PunalWebsocketLibrary/cmake-build-debug
+/Source/ThirdParty/PunalWebsocketLibrary/CMakeCache.txt
+/Source/ThirdParty/PunalWebsocketLibrary/cmake_install.cmake
+/Source/ThirdParty/PunalWebsocketLibrary/install_manifest.txt
+/Source/ThirdParty/PunalWebsocketLibrary/CMakeFiles/
+/Source/ThirdParty/PunalWebsocketLibrary/CTestTestfile.cmake
+/Source/ThirdParty/PunalWebsocketLibrary/Makefile
+/Source/ThirdParty/PunalWebsocketLibrary/*.cbp
+/Source/ThirdParty/PunalWebsocketLibrary/CMakeScripts
+/Source/ThirdParty/PunalWebsocketLibrary/compile_commands.json

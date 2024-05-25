@@ -3,6 +3,7 @@ project(PunalWebScketBoostBeast)
 cmake_minimum_required(VERSION 3.0.0)
 
 include(ExternalProject)
+add_compile_options(/bigobj)#In Case it Complains fatal error C1128: number of sections exceeded object file format limit: compile with /bigobj 
 #set(simple_example)
 
 #Macros Start
@@ -27,6 +28,10 @@ MACRO(SUBFOLDEREXITS doesexist curdir foldertosearch)
   endif()
 ENDMACRO()
 #Macros End
+
+#Global Vars Start
+SET(P_Should_Build_OpenSSL 0)
+#Global Vars End
 
 #set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Supported configs" FORCE)
 
@@ -122,16 +127,18 @@ if(CMAKE_HOST_APPLE)
   set(P_OPENSSL_BUILD_COMMAND_3 make)
 endif()
 
-set(P_OPENSSL_BUILD_COMMAND_VAR)
-add_custom_target(
-    P_OPENSSL_BUILD_COMMAND_VAR ALL
-    WORKING_DIRECTORY ${OPENSSL_ROOT_DIR}
-    COMMAND ${P_OPENSSL_BUILD_COMMAND_1}
-    COMMAND ${P_OPENSSL_BUILD_COMMAND_2}
-    COMMAND ${P_OPENSSL_BUILD_COMMAND_3}
-    BYPRODUCTS ${OPENSSL_ROOT_DIR}/libcrypto.lib ${OPENSSL_ROOT_DIR}/libssl.lib
-    USES_TERMINAL
-)
+IF(P_Should_Build_OpenSSL)
+    set(P_OPENSSL_BUILD_COMMAND_VAR)
+    add_custom_target(
+        P_OPENSSL_BUILD_COMMAND_VAR ALL
+        WORKING_DIRECTORY ${OPENSSL_ROOT_DIR}
+        COMMAND ${P_OPENSSL_BUILD_COMMAND_1}
+        COMMAND ${P_OPENSSL_BUILD_COMMAND_2}
+        COMMAND ${P_OPENSSL_BUILD_COMMAND_3}
+        BYPRODUCTS ${OPENSSL_ROOT_DIR}/libcrypto.lib ${OPENSSL_ROOT_DIR}/libssl.lib
+        USES_TERMINAL
+    )
+ENDIF()
 
 if(WIN32)
     if (CMAKE_GENERATOR MATCHES "Visual Studio")            
@@ -164,7 +171,9 @@ endif()
 #Example Files ONLY FOR TESTING
 include_directories(${BOOST_ROOT}/libs/beast/example)
 add_executable(simple_example main.cpp)
-add_dependencies(simple_example P_OPENSSL_BUILD_COMMAND_VAR)
+IF(P_Should_Build_OpenSSL)
+    add_dependencies(simple_example P_OPENSSL_BUILD_COMMAND_VAR)
+ENDIF()
 if(WIN32)
     if (CMAKE_GENERATOR MATCHES "Visual Studio")
     #add_dependencies(P_OPENSSL_BUILD_COMMAND_VAR P_Visual_Studio_Pre_Build_Command_Target)

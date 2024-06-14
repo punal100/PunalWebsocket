@@ -24,15 +24,11 @@
 
 #include "Websocket_BL_BPM.generated.h"
 
-using tcp = boost::asio::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
-namespace websocket = boost::beast::websocket;  // from <boost/beast/websocket.hpp>
-
-
-
-
-
-
-
+namespace beast = boost::beast;         // from <boost/beast.hpp>
+namespace http = beast::http;           // from <boost/beast/http.hpp>
+namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
+namespace net = boost::asio;            // from <boost/asio.hpp>
+using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 // Report a failure
 void fail(boost::system::error_code ec, char const* what)
@@ -42,24 +38,27 @@ void fail(boost::system::error_code ec, char const* what)
     Temp_String += ": ";
     Temp_String += FString(ec.message().c_str());
 
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
+    AsyncTask(ENamedThreads::GameThread, [=]()
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
+    });    
 }
 
 // Sends a WebSocket message and prints the response
 class session : public std::enable_shared_from_this<session>
 {
     tcp::resolver resolver_;
-    websocket::stream<tcp::socket> ws_;
-    boost::beast::multi_buffer buffer_;
+    websocket::stream<beast::tcp_stream> ws_;
+    beast::flat_buffer buffer_;
     std::string host_;
     std::string text_;
 
 public:
     // Resolver and socket require an io_context
     explicit
-        session(boost::asio::io_context& ioc)
-        : resolver_(ioc)
-        , ws_(ioc)
+        session(net::io_context& ioc)
+        : resolver_(ioc.get_executor())
+        , ws_(ioc.get_executor())
     {
     }
 
@@ -73,81 +72,88 @@ public:
         // Save these for later
         host_ = host;
         text_ = text;
-        close();
-        close();
-        close();
-        close();
-        close();
+
         // Look up the domain name
         resolver_.async_resolve(
             host,
             port,
-            std::bind(
+            beast::bind_front_handler(
                 &session::on_resolve,
-                shared_from_this(),
-                std::placeholders::_1,
-                std::placeholders::_2));
+                shared_from_this()));
     }
 
     void
         on_resolve(
-            boost::system::error_code ec,
+            beast::error_code ec,
             tcp::resolver::results_type results)
     {
         if (ec)
             return fail(ec, "resolve");
 
+        // Set the timeout for the operation
+        beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
+
         // Make the connection on the IP address we get from a lookup
-        boost::asio::async_connect(
-            ws_.next_layer(),
-            results.begin(),
-            results.end(),
-            std::bind(
+        beast::get_lowest_layer(ws_).async_connect(
+            results,
+            beast::bind_front_handler(
                 &session::on_connect,
-                shared_from_this(),
-                std::placeholders::_1));
+                shared_from_this()));
     }
 
     void
-        on_connect(boost::system::error_code ec)
+        on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type ep)
     {
         if (ec)
             return fail(ec, "connect");
 
+        // Turn off the timeout on the tcp_stream, because
+        // the websocket stream has its own timeout system.
+        beast::get_lowest_layer(ws_).expires_never();
+
+        // Set suggested timeout settings for the websocket
+        ws_.set_option(
+            websocket::stream_base::timeout::suggested(
+                beast::role_type::client));
+
+        // Set a decorator to change the User-Agent of the handshake
+        ws_.set_option(websocket::stream_base::decorator(
+            [](websocket::request_type& req)
+            {
+                req.set(http::field::user_agent,
+                std::string(BOOST_BEAST_VERSION_STRING) +
+                " websocket-client-async");
+            }));
+
+        // Update the host_ string. This will provide the value of the
+        // Host HTTP header during the WebSocket handshake.
+        // See https://tools.ietf.org/html/rfc7230#section-5.4
+        host_ += ':' + std::to_string(ep.port());
+
         // Perform the websocket handshake
         ws_.async_handshake(host_, "/",
-            std::bind(
+            beast::bind_front_handler(
                 &session::on_handshake,
-                shared_from_this(),
-                std::placeholders::_1));
+                shared_from_this()));
     }
 
     void
-        on_handshake(boost::system::error_code ec)
+        on_handshake(beast::error_code ec)
     {
         if (ec)
-
-            close();
-        close();
-        close();
-        close();
-        close();
-        close();
             return fail(ec, "handshake");
 
         // Send the message
         ws_.async_write(
-            boost::asio::buffer(text_),
-            std::bind(
+            net::buffer(text_),
+            beast::bind_front_handler(
                 &session::on_write,
-                shared_from_this(),
-                std::placeholders::_1,
-                std::placeholders::_2));
+                shared_from_this()));
     }
 
     void
         on_write(
-            boost::system::error_code ec,
+            beast::error_code ec,
             std::size_t bytes_transferred)
     {
         boost::ignore_unused(bytes_transferred);
@@ -158,16 +164,14 @@ public:
         // Read a message into our buffer
         ws_.async_read(
             buffer_,
-            std::bind(
+            beast::bind_front_handler(
                 &session::on_read,
-                shared_from_this(),
-                std::placeholders::_1,
-                std::placeholders::_2));
+                shared_from_this()));
     }
 
     void
         on_read(
-            boost::system::error_code ec,
+            beast::error_code ec,
             std::size_t bytes_transferred)
     {
         boost::ignore_unused(bytes_transferred);
@@ -177,23 +181,22 @@ public:
 
         // Close the WebSocket connection
         ws_.async_close(websocket::close_code::normal,
-            std::bind(
+            beast::bind_front_handler(
                 &session::on_close,
-                shared_from_this(),
-                std::placeholders::_1));
+                shared_from_this()));
     }
 
     void
-        on_close(boost::system::error_code ec)
+        on_close(beast::error_code ec)
     {
         if (ec)
             return fail(ec, "close");
 
         // If we get here then the connection is closed gracefully
 
-        FString Temp_String = "Punal_Log: ";
-        // The buffers() function helps print a ConstBufferSequence
+        // The make_printable() function helps print a ConstBufferSequence
 
+        FString Temp_String = "Punal_Log: ";
         Temp_String += FString(
             boost::beast::buffers_to_string
             (
@@ -201,20 +204,12 @@ public:
             ).c_str()
         );
 
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
-    }
-
-    void close()
-    {
-        // Close the WebSocket connection
-        ws_.async_close(websocket::close_code::normal,
-            std::bind(
-                &session::on_close,
-                shared_from_this(),
-                std::placeholders::_1));
+        AsyncTask(ENamedThreads::GameThread, [=]()
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
+            });
     }
 };
-
 
 USTRUCT(BlueprintType)
 struct FPunal_Websocket
@@ -234,10 +229,12 @@ class PUNALWEBSOCKET_API UWebsocket_BL_BPM : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
-	
     UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
-	    static FPunal_Websocket Create_And_Start_Websocket(FString IP, int Port, FString Text);
+        static FPunal_Websocket Create_And_Start_Websocket_Blocking(FString IP, int Port, FString Text);
 
     UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
+        static FPunal_Websocket Create_And_Start_Websocket_Non_Blocking(FString IP, int Port, FString Text);
+
+    //UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
         static void Close_Target_Websocket(FPunal_Websocket Arg_Websocket);
 };

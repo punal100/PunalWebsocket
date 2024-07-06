@@ -33,7 +33,8 @@ public class PunalWebsocket : ModuleRules
                 "Engine",
                 "InputCore",
                 "Boost",
-				"Projects"
+                "OpenSSL",
+                "Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

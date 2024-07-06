@@ -11,11 +11,40 @@
 #pragma push_macro("check")
 #undef check
 
-#include <Boost/boost-1_80_0/include/boost/beast/websocket.hpp>
-#include <Boost/boost-1_80_0/include/boost/beast/core.hpp>
-#include <Boost/boost-1_80_0/include/boost/beast/websocket.hpp>
-#include <Boost/boost-1_80_0/include/boost/asio/connect.hpp>
-#include <Boost/boost-1_80_0/include/boost/asio/ip/tcp.hpp>
+// Punal Manalan,
+// NOTE:
+// Fixing Compile Error By Making This Execption Function
+#define BOOST_NO_EXCEPTIONS
+#include <boost/throw_exception.hpp>
+namespace stdext
+{
+    class exception;
+}
+namespace boost
+{
+    void throw_exception(class stdext::exception const&, struct boost::source_location const&)
+    {
+        //throw std::exception{};
+        BOOST_UNREACHABLE_RETURN(0);
+    }
+
+    void throw_exception(std::exception const& e) 
+    {
+        //do nothing
+        BOOST_UNREACHABLE_RETURN(0);
+    }
+
+    void throw_exception(std::exception const&, boost::source_location const&)
+    {
+        BOOST_UNREACHABLE_RETURN(0);
+    }
+}
+
+#include <boost/beast/websocket.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 // Punal Manalan,
 // NOTE:
@@ -30,18 +59,31 @@ namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
+UCLASS(BlueprintType)
+class UPunal_Log_Object : public UObject
+{
+    GENERATED_BODY()
+public:
+
+    UFUNCTION(BlueprintCallable, Category = "Punal | Log")
+        void Log_OnScreen(FString Log_Message)
+    {
+        AsyncTask(ENamedThreads::GameThread, [=]()
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Log_Message);
+            });
+    }
+};
+
 // Report a failure
-void fail(boost::system::error_code ec, char const* what)
+void fail(boost::system::error_code ec, char const* what, UPunal_Log_Object* Arg_Log_Obj)
 {
     FString Temp_String = "Punal_Log: ";
     Temp_String += what;
     Temp_String += ": ";
     Temp_String += FString(ec.message().c_str());
 
-    AsyncTask(ENamedThreads::GameThread, [=]()
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
-    });    
+    Arg_Log_Obj->Log_OnScreen(Temp_String);
 }
 
 // Sends a WebSocket message and prints the response
@@ -54,12 +96,14 @@ class session : public std::enable_shared_from_this<session>
     std::string text_;
 
 public:
+    UPunal_Log_Object* Log_Obj = nullptr;
     // Resolver and socket require an io_context
     explicit
         session(net::io_context& ioc)
         : resolver_(ioc.get_executor())
         , ws_(ioc.get_executor())
     {
+        //Log_Obj = Arg_Log_Obj;
     }
 
     // Start the asynchronous operation
@@ -88,7 +132,7 @@ public:
             tcp::resolver::results_type results)
     {
         if (ec)
-            return fail(ec, "resolve");
+            return fail(ec, "resolve", Log_Obj);
 
         // Set the timeout for the operation
         beast::get_lowest_layer(ws_).expires_after(std::chrono::seconds(30));
@@ -105,7 +149,7 @@ public:
         on_connect(beast::error_code ec, tcp::resolver::results_type::endpoint_type ep)
     {
         if (ec)
-            return fail(ec, "connect");
+            return fail(ec, "connect", Log_Obj);
 
         // Turn off the timeout on the tcp_stream, because
         // the websocket stream has its own timeout system.
@@ -141,7 +185,7 @@ public:
         on_handshake(beast::error_code ec)
     {
         if (ec)
-            return fail(ec, "handshake");
+            return fail(ec, "handshake", Log_Obj);
 
         // Send the message
         ws_.async_write(
@@ -159,7 +203,7 @@ public:
         boost::ignore_unused(bytes_transferred);
 
         if (ec)
-            return fail(ec, "write");
+            return fail(ec, "write", Log_Obj);
 
         // Read a message into our buffer
         ws_.async_read(
@@ -177,7 +221,7 @@ public:
         boost::ignore_unused(bytes_transferred);
 
         if (ec)
-            return fail(ec, "read");
+            return fail(ec, "read", Log_Obj);
 
         // Close the WebSocket connection
         ws_.async_close(websocket::close_code::normal,
@@ -190,7 +234,7 @@ public:
         on_close(beast::error_code ec)
     {
         if (ec)
-            return fail(ec, "close");
+            return fail(ec, "close", Log_Obj);
 
         // If we get here then the connection is closed gracefully
 
@@ -204,10 +248,7 @@ public:
             ).c_str()
         );
 
-        AsyncTask(ENamedThreads::GameThread, [=]()
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
-            });
+        Log_Obj->Log_OnScreen(Temp_String);
     }
 };
 
@@ -233,7 +274,7 @@ public:
         static FPunal_Websocket Create_And_Start_Websocket_Blocking(FString IP, int Port, FString Text);
 
     UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
-        static FPunal_Websocket Create_And_Start_Websocket_Non_Blocking(FString IP, int Port, FString Text);
+        static FPunal_Websocket Create_And_Start_Websocket_Non_Blocking(FString IP, int Port, FString Text, UPunal_Log_Object* Log_Obj);
 
     //UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
         static void Close_Target_Websocket(FPunal_Websocket Arg_Websocket);

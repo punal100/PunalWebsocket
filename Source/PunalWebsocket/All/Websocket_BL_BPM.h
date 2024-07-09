@@ -14,6 +14,14 @@
 // Punal Manalan,
 // NOTE:
 // Fixing Compile Error By Making This Execption Function
+
+#define UI UI_ST
+THIRD_PARTY_INCLUDES_START
+//#include <openssl/ssl.h>
+
+//#pragma warning(disable: 4668)
+//#include <boost/thread.hpp>
+
 #define BOOST_NO_EXCEPTIONS
 #include <boost/throw_exception.hpp>
 namespace stdext
@@ -28,7 +36,7 @@ namespace boost
         BOOST_UNREACHABLE_RETURN(0);
     }
 
-    void throw_exception(std::exception const& e) 
+    void throw_exception(std::exception const& e)
     {
         //do nothing
         BOOST_UNREACHABLE_RETURN(0);
@@ -40,11 +48,19 @@ namespace boost
     }
 }
 
-#include <boost/beast/websocket.hpp>
 #include <boost/beast/core.hpp>
+#include <boost/beast/websocket.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+
+#include <boost/asio/ssl.hpp>
+#include <boost/beast/ssl.hpp>
+#include <boost/beast/websocket/ssl.hpp>
+#include <boost/asio/ssl/stream.hpp>
+
+THIRD_PARTY_INCLUDES_END
+#undef UI
 
 // Punal Manalan,
 // NOTE:
@@ -57,6 +73,7 @@ namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
 namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
+namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 UCLASS(BlueprintType)
@@ -271,10 +288,16 @@ class PUNALWEBSOCKET_API UWebsocket_BL_BPM : public UBlueprintFunctionLibrary
 	
 public:
     UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
+        static FString Get_Platform_SSL_Public_Certificates();
+
+    UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
         static FPunal_Websocket Create_And_Start_Websocket_Blocking(FString IP, int Port, FString Text);
 
     UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
         static FPunal_Websocket Create_And_Start_Websocket_Non_Blocking(FString IP, int Port, FString Text, UPunal_Log_Object* Log_Obj);
+
+    UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
+        static FPunal_Websocket Create_And_Start_Websocket_SSL_Blocking(FString Host, int Port, FString Text);
 
     //UFUNCTION(BlueprintCallable, Category = "Punal | Blueprint Library | Websocket")
         static void Close_Target_Websocket(FPunal_Websocket Arg_Websocket);

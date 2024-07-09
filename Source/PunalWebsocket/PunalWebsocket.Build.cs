@@ -23,24 +23,25 @@ public class PunalWebsocket : ModuleRules
 				// ... add other private include paths required here ...
 			}
 			);
-			
-		
-		PublicDependencyModuleNames.AddRange(
+
+        //AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenSSL", "libWebSockets", "zlib");
+        //PrivateDependencyModuleNames.Add("SSL");
+
+        PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
 				"Core",
                 "CoreUObject",
                 "Engine",
                 "InputCore",
-                "Boost",
                 "OpenSSL",
+                "Boost",
                 "Projects"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
-			
-		
-		PrivateDependencyModuleNames.AddRange(
+
+        PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
 				// ... add private dependencies that you statically link with here ...	

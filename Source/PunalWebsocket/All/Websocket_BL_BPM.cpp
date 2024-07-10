@@ -241,7 +241,8 @@ FPunal_Websocket UWebsocket_BL_BPM::Create_And_Start_Websocket_Non_Blocking(FStr
             Websocket_Session_Ptr->Log_Obj = Log_Obj;
 
             // Launch the asynchronous operation
-            std::make_shared<session>(ioc)->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
+            //std::make_shared<session>(ioc)->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
+            Websocket_Session_Ptr->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
             //m_thread = boost::make_shared<boost::thread>(boost::bind(&session::run, Websocket_Session_Ptr, host, port, text));
             //m_thread = boost::make_shared<boost::thread>(boost::bind(&session::test, Websocket_Session_Ptr));
             //m_thread = new boost::thread(boost::bind(&session::test, Websocket_Session_Ptr));
@@ -305,7 +306,7 @@ FPunal_Websocket UWebsocket_BL_BPM::Create_And_Start_Websocket_SSL_Blocking(FStr
 
     // These objects perform our I/O
     tcp::resolver resolver{ ioc };
-    websocket::stream<beast::ssl_stream<tcp::socket>> ws{ ioc, ctx };
+    websocket::stream<beast::ssl_stream<tcp::socket>> ws{ ioc, ctx};
 
     // Look up the domain name
     auto const results = resolver.resolve(host_std, TCHAR_TO_UTF8(*port));
@@ -369,6 +370,78 @@ FPunal_Websocket UWebsocket_BL_BPM::Create_And_Start_Websocket_SSL_Blocking(FStr
     GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, Temp_String);
 
     return Return_Websocket;
+}
+
+FPunal_Websocket UWebsocket_BL_BPM::Create_And_Start_Websocket_SSL_Non_Blocking(FString IP, int Port, FString Text, UPunal_Log_Object* Log_Obj)
+{
+    // Create new Thread
+    //boost::shared_ptr<boost::thread> m_thread;
+
+    //m_thread = boost::make_shared<boost::thread>([=]()
+    AsyncTask(ENamedThreads::AnyThread, [=]()
+        {
+            FString Port_String = FString::FromInt(Port);
+
+            FString host = IP;
+            FString port = Port_String;
+            FString text = Text;
+
+            // The io_context is required for all I/O
+            net::io_context ioc;
+
+            // The SSL context is required, and holds certificates
+            ssl::context ctx{ ssl::context::tlsv12_client };
+
+            //// This holds the root certificate used for verification
+            //load_root_certificates(ctx);
+            //FSslModule::Get().GetCertificateManager().VerifySslCertificates(Context, Domain);// Found inside Unreal Engine Websocket
+            {
+                boost::system::error_code ec;
+                FString cert = "";
+                cert = Get_Platform_SSL_Public_Certificates();
+
+                std::string cert_stdstring = TCHAR_TO_UTF8(*cert);
+
+                ctx.add_certificate_authority(
+                    boost::asio::buffer(cert_stdstring.data(), cert_stdstring.size()), ec);
+                if (ec)
+                {
+                    FString Temp_String = "Punal_Log: Cerfiticate Add Failed: ";
+                    Temp_String += FString(ec.message().c_str());
+                    //Temp_String += " Input Cert: ";
+                    //Temp_String += cert;
+
+                    Log_Obj->Log_OnScreen(Temp_String);
+
+                    return;
+                }
+            }
+
+            //Create a Shared_Ptr
+            //session* f = new session(ioc);
+            boost::shared_ptr<session> Websocket_Session_Ptr = boost::make_shared<session>(ioc, ctx);
+            Websocket_Session_Ptr->Log_Obj = Log_Obj;
+
+            // Launch the asynchronous operation
+            //std::make_shared<session>(ioc)->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
+            Websocket_Session_Ptr->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
+            //Websocket_Session_Ptr->run(TCHAR_TO_UTF8(*host), TCHAR_TO_UTF8(*port), TCHAR_TO_UTF8(*text));
+            //m_thread = boost::make_shared<boost::thread>(boost::bind(&session::run, Websocket_Session_Ptr, host, port, text));
+            //m_thread = boost::make_shared<boost::thread>(boost::bind(&session::test, Websocket_Session_Ptr));
+            //m_thread = new boost::thread(boost::bind(&session::test, Websocket_Session_Ptr));
+            //m_thread = new boost::thread(boost::bind(&session::test, &Websocket_Session_Ptr));
+
+            //m_thread->join();
+
+            // Run the I/O service. The call will return when
+            // the socket is closed.
+            ioc.run();
+
+            //return FPunal_Websocket();            
+        }
+    );
+
+    return FPunal_Websocket();
 }
 
 void UWebsocket_BL_BPM::Close_Target_Websocket(FPunal_Websocket Arg_Websocket)

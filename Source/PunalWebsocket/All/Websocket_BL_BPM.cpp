@@ -103,12 +103,21 @@ FString UWebsocket_BL_BPM::Get_Platform_SSL_Public_Certificates()
             }
         }
     }
-#elif
+#else
     static const TCHAR* KnownBundlePaths[] =
     {
-        TEXT("/etc/pki/tls/certs/ca-bundle.crt"),
-        TEXT("/etc/ssl/certs/ca-certificates.crt"),
-        TEXT("/etc/ssl/ca-bundle.pem"),
+        TEXT("/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"),    // CentOS/RHEL 7
+        TEXT("/etc/ssl/certs/ca-certificates.crt"),                   // Debian/Ubuntu/Gentoo etc.
+        TEXT("/etc/pki/tls/certs/ca-bundle.crt"),                     // Fedora/RHEL 6
+        TEXT("/system/etc/security/cacerts"),                         // Android
+        TEXT("/etc/pki/tls/cacert.pem"),                              // OpenELEC
+        TEXT("/etc/ssl/ca-bundle.pem"),                               // OpenSUSE
+        TEXT("/usr/local/share/certs"),                               // FreeBSD
+        TEXT("/etc/pki/tls/certs"),                                   // Fedora/RHEL
+        TEXT("/etc/openssl/certs"),                                   // NetBSD
+        TEXT("/etc/ssl/cert.pem"),                                    // Alpine Linux
+        TEXT("/etc/ssl/certs"),                                       // SLES10/SLES11, https://golang.org/issue/12139
+        TEXT("/var/ssl/certs"),                                       // AIX
     };
     All_Cert = "";
     for (const TCHAR* CurrentBundle : KnownBundlePaths)
